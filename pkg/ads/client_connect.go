@@ -64,9 +64,11 @@ func (c *Client) Connect() error {
 
 		// Trigger OnStateChange hook for initial state (with oldState=nil)
 		// Called synchronously so the caller sees the state before Connect() returns.
-		c.invokeHook("OnStateChange", func() {
-			c.settings.OnStateChange(c, initialState, nil)
-		})
+		if c.settings.OnStateChange != nil {
+			c.invokeHook("OnStateChange", func() {
+				c.settings.OnStateChange(c, initialState, nil)
+			})
+		}
 	}
 
 	// Start state poller if enabled
