@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.18">
+  <POU Name="Main" Id="{7992a583-284c-4ce0-b1dd-ad28638c7c1d}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Main
+VAR
+	timer : Ton;
+	tick : BOOL;
+	
+	{attribute 'displaymode':='hex'} 
+    var_with_standard_attribute : DWORD;
+	
+	{attribute 'my_custom_attribute'}
+	var_with_custom_attribute : STRING(255) := 'I have attribute {attribute $'my_custom_attribute$'}';
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// ------------------------------------------------------------
+// A) Cycle-based behavior (each PLC scan)
+// ------------------------------------------------------------
+
+IF Global.int_counter_active THEN
+    Global.int_counter := Global.int_counter + 1;
+END_IF
+
+IF Global.bool_toggle_active THEN
+    Global.bool_toggle := NOT Global.bool_toggle;
+END_IF
+
+// ------------------------------------------------------------
+// B) Time-based behavior (every Global.cycle_period)
+// This triggers a `tick` each time the Ton timer elapses.
+// ------------------------------------------------------------
+timer(IN := TRUE, PT := Global.cycle_period);
+
+// bTick is TRUE only when timer is done
+tick := timer.Q;
+
+IF tick THEN
+    // Do the same actions, but only on the tick
+    IF Global.timed_int_counter_active THEN
+        Global.timer_int_counter := Global.timer_int_counter + 1;
+    END_IF
+
+    IF Global.timed_bool_toggle_active THEN
+        Global.timed_bool_toggle := NOT Global.timed_bool_toggle;
+    END_IF
+
+    // Retrigger timer (create a periodic pulse)
+    timer(IN := FALSE);
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>
