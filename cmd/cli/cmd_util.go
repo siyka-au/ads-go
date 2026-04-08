@@ -26,6 +26,7 @@ func handleHelp(args []string, client *ads.Client) {
 	fmt.Println("  read_object              - Read GLOBAL.gMyDUT (struct)")
 	fmt.Println("  read_array               - Read GLOBAL.gIntArray")
 	fmt.Println("  list_symbols             - List all available PLC symbols (first 100)")
+	fmt.Println("  read_attributes [path] [port] - Read type info, attributes, and value of a symbol")
 
 	fmt.Println("\nWrite Commands:")
 	fmt.Println("  write_value <int>        - Write integer to GLOBAL.gMyInt")
