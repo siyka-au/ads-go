@@ -51,6 +51,9 @@ func Serialize(value any, dataType types.AdsDataType, isArrayItem ...bool) ([]by
 		if !ok {
 			return nil, fmt.Errorf("invalid type for struct: %T (expected map[string]any)", value)
 		}
+		// Allocate the exact struct size reported by the PLC so that any
+		// alignment padding between fields is preserved as zero bytes.
+		result := make([]byte, dataType.Size)
 		for _, subItem := range dataType.SubItems {
 			subItemValue, exists := valMap[subItem.Name]
 			if !exists {
@@ -60,9 +63,9 @@ func Serialize(value any, dataType types.AdsDataType, isArrayItem ...bool) ([]by
 			if err != nil {
 				return nil, err
 			}
-			buf.Write(subItemBuf)
+			copy(result[subItem.Offset:], subItemBuf)
 		}
-		return buf.Bytes(), nil
+		return result, nil
 	}
 
 	// Second: handle arrays (including multidimensional)
