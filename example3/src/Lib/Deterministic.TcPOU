@@ -1,0 +1,150 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <POU Name="Deterministic" Id="{bc0b066e-a64b-45c0-8e3e-84f5d0118792}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Deterministic
+VAR
+	// Control (writable by Go test)
+	seed               : UDINT := 0;
+	auto_mode          : BOOL := FALSE;
+	auto_tick_interval : UDINT := 50;
+
+	// Outputs
+	bool_var   : BOOL;
+	sint_var   : SINT;
+	usint_var  : USINT;
+	byte_var   : BYTE;
+	int_var    : INT;
+	uint_var   : UINT;
+	word_var   : WORD;
+	dint_var   : DINT;
+	udint_var  : UDINT;
+	dword_var  : DWORD;
+	lint_var   : LINT;
+	ulint_var  : ULINT;
+	lword_var  : LWORD;
+	real_var   : REAL;
+	lreal_var  : LREAL;
+	time_var   : TIME;
+	tod_var    : TOD;
+	date_var   : DATE;
+	dt_var     : DT;
+	//ltime_var  : LTIME;
+	//ltod_var   : LTOD;
+	//ldate_var  : LDATE;
+	//ldt_var    : LDT;
+	string_var : STRING(255);
+	struct_var : TestStruct;
+	int_array  : ARRAY[0..9] OF INT;
+	dint_array : ARRAY[0..9] OF DINT;
+	array_2d   : ARRAY[0..2, 0..2] OF INT;
+
+	// Private
+	_tick_counter : UDINT;
+	_i            : UDINT;
+	_j            : UDINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// -----------------------------------------------------------------------
+// Auto-increment mode: advance seed every auto_tick_interval cycles
+// -----------------------------------------------------------------------
+IF auto_mode THEN
+	IF _tick_counter >= auto_tick_interval THEN
+		seed          := seed + 1;
+		_tick_counter := 0;
+	ELSE
+		_tick_counter := _tick_counter + 1;
+	END_IF
+END_IF
+
+// -----------------------------------------------------------------------
+// Update variables — all fields are deterministic functions of seed
+// -----------------------------------------------------------------------
+bool_var  := (seed MOD 2 = 0);
+sint_var  := UDINT_TO_SINT(seed);
+usint_var := UDINT_TO_USINT(seed);
+byte_var  := UDINT_TO_BYTE(seed);
+int_var   := UDINT_TO_INT(seed);
+uint_var  := UDINT_TO_UINT(seed);
+word_var  := UDINT_TO_WORD(seed);
+dint_var  := UDINT_TO_DINT(seed);
+udint_var := seed;
+dword_var := UDINT_TO_DWORD(seed);
+lint_var  := UDINT_TO_LINT(seed);
+ulint_var := UDINT_TO_ULINT(seed);
+lword_var := UDINT_TO_LWORD(seed);
+real_var  := UDINT_TO_REAL(seed);
+lreal_var := UDINT_TO_LREAL(seed);
+
+// Date/time types — raw truncating casts, same bit pattern Go test will verify
+time_var  := UDINT_TO_TIME(seed);
+tod_var   := UDINT_TO_TOD(seed MOD 86400000);
+date_var  := UDINT_TO_DATE(seed);
+dt_var    := UDINT_TO_DT(seed);
+//ltime_var := ULINT_TO_LTIME(UDINT_TO_ULINT(seed));
+//ltod_var  := ULINT_TO_LTOD(UDINT_TO_ULINT(seed) MOD 86400000000000);
+//ldate_var := ULINT_TO_LDATE(UDINT_TO_ULINT(seed));
+//ldt_var   := ULINT_TO_LDT(UDINT_TO_ULINT(seed));
+
+string_var := CONCAT('S=', UDINT_TO_STRING(seed));
+
+// -----------------------------------------------------------------------
+// Update test struct — all fields are deterministic functions of seed
+// -----------------------------------------------------------------------
+struct_var.seed      := seed;
+
+struct_var.bool_var  := bool_var;
+struct_var.sint_var  := sint_var;
+struct_var.usint_var := usint_var;
+struct_var.byte_var  := byte_var;
+struct_var.int_var   := int_var;
+struct_var.uint_var  := uint_var;
+struct_var.word_var  := word_var;
+struct_var.dint_var  := dint_var;
+struct_var.udint_var := udint_var;
+struct_var.dword_var := dword_var;
+struct_var.lint_var  := lint_var;
+struct_var.ulint_var := ulint_var;
+struct_var.lword_var := lword_var;
+struct_var.real_var  := real_var;
+struct_var.lreal_var := lreal_var;
+struct_var.time_var  := time_var;
+struct_var.tod_var   := tod_var;
+struct_var.date_var  := date_var;
+struct_var.dt_var    := dt_var;
+//struct_var.ltime_var := ltime_var;
+//struct_var.ltod_var  := ltod_var;
+//struct_var.ldate_var := ldate_var;
+//struct_var.ldt_var   := ldt_var;
+struct_var.string_var := string_var;
+
+// -----------------------------------------------------------------------
+// Update 1-D arrays: element[i] = UDINT_TO_x(seed + i)
+// -----------------------------------------------------------------------
+FOR _i := 0 TO 9 DO
+	int_array[_i]  := UDINT_TO_INT(seed + _i);
+	dint_array[_i] := UDINT_TO_DINT(seed + _i);
+END_FOR
+
+// -----------------------------------------------------------------------
+// Update 2-D array: element[i,j] = UDINT_TO_INT(seed + i*3 + j)
+// -----------------------------------------------------------------------
+FOR _i := 0 TO 2 DO
+	FOR _j := 0 TO 2 DO
+		array_2d[_i, _j] := UDINT_TO_INT(seed + _i * 3 + _j);
+	END_FOR
+END_FOR]]></ST>
+    </Implementation>
+    <LineIds Name="Deterministic">
+      <LineId Id="147" Count="10" />
+      <LineId Id="265" Count="2" />
+      <LineId Id="210" Count="0" />
+      <LineId Id="238" Count="25" />
+      <LineId Id="158" Count="0" />
+      <LineId Id="264" Count="0" />
+      <LineId Id="159" Count="4" />
+      <LineId Id="268" Count="22" />
+      <LineId Id="192" Count="16" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

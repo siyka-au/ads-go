@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <POU Name="Main" Id="{151bda18-a213-42d0-86e0-e79837f085e9}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Main
+VAR
+	test : Deterministic;
+
+	// Writable targets — PLC never modifies these, Go test owns them
+	write_bool_var   : BOOL;
+	write_sint_var   : SINT;
+	write_usint_var  : USINT;
+	write_byte_var   : BYTE;
+	write_int_var    : INT;
+	write_uint_var   : UINT;
+	write_word_var   : WORD;
+	write_dint_var   : DINT;
+	write_udint_var  : UDINT;
+	write_dword_var  : DWORD;
+	write_lint_var   : LINT;
+	write_ulint_var  : ULINT;
+	write_lword_var  : LWORD;
+	write_real_var   : REAL;
+	write_lreal_var  : LREAL;
+	write_time_var   : TIME;
+	write_tod_var    : TOD;
+	write_date_var   : DATE;
+	write_dt_var     : DT;
+	//write_ltime_var  : LTIME;
+	//write_ltod_var   : LTOD;
+	//write_ldate_var  : LDATE;
+	//write_ldt_var    : LDT;
+	write_string_var : STRING(255);
+	write_struct_var : TestStruct;
+	write_int_array  : ARRAY[0..9] OF INT;
+	write_dint_array : ARRAY[0..9] OF DINT;
+	write_2d_array   : ARRAY[0..2, 0..2] OF INT;
+
+	// Struct packing test targets — one instance per pack_mode
+	// struct_tests: PLC drives these from seed (Go read-only for phase 1)
+	struct_tests : StructTests;
+	// pack_*: Go-owned write targets (PLC never modifies, used in phase 2)
+	pack_none  : PackNone;
+	pack_two   : PackTwo;
+	pack_four  : PackFour;
+	pack_eight : PackEight;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[test();
+struct_tests();]]></ST>
+    </Implementation>
+    <LineIds Name="Main">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

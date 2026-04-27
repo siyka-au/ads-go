@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <DUT Name="PackTwo" Id="{a1b2c3d4-0000-4000-8000-000000000002}">
+    <Declaration><![CDATA[{attribute 'pack_mode' := '2'}
+TYPE PackTwo :
+STRUCT
+	b1  : BOOL;
+	d1  : DWORD;
+	b2  : BOOL;
+	lw1 : LWORD;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>
