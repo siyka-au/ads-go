@@ -696,3 +696,30 @@ func TestStructPacking(t *testing.T) {
 		}
 	})
 }
+// >>> TEST_SYMBOL_ATTRIBUTES START
+func TestSymbolAttributes(t *testing.T) {
+    client := newClient(t)
+
+    sym, err := client.GetSymbol(plcPort, "Main.attribute_test")
+    require.NoError(t, err, "GetSymbol Main.attribute_test")
+    require.NotNil(t, sym)
+
+    // Expect two attributes: a flag-only attribute and a key=value attribute.
+    require.Len(t, sym.Attributes, 2, "expected 2 attributes on Main.attribute_test")
+
+    var foundLinkalways, foundCustom bool
+    for _, a := range sym.Attributes {
+        switch a.Name {
+        case "linkalways":
+            foundLinkalways = true
+            assert.Equal(t, "", a.Value, "linkalways should have empty value")
+        case "some_made_up_key":
+            foundCustom = true
+            assert.Equal(t, "some_made_up_value", a.Value, "some_made_up_key value")
+        }
+    }
+
+    require.True(t, foundLinkalways, "missing attribute: linkalways")
+    require.True(t, foundCustom, "missing attribute: some_made_up_key")
+}
+// <<< TEST_SYMBOL_ATTRIBUTES END
