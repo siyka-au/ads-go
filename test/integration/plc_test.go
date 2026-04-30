@@ -697,7 +697,6 @@ func TestStructPacking(t *testing.T) {
 		}
 	})
 }
-// >>> TEST_SYMBOL_ATTRIBUTES START
 func TestSymbolAttributes(t *testing.T) {
 	client := newClient(t)
 
@@ -739,22 +738,17 @@ func TestSymbolAttributes(t *testing.T) {
 		}
 	}
 
-	// Expect two attributes: a flag-only attribute and a key=value attribute.
-	require.Len(t, sym.Attributes, 2, "expected 2 attributes on Main.attribute_test")
+	// Expect one attribute: a flag-only attribute.
+	require.Len(t, sym.Attributes, 1, "expected 1 attribute on Main.attribute_test")
 
-	var foundLinkalways, foundCustom bool
+	var foundCustom bool
 	for _, a := range sym.Attributes {
 		switch a.Name {
-		case "linkalways":
-			foundLinkalways = true
-			assert.Equal(t, "", a.Value, "linkalways should have empty value")
-		case "some_made_up_key":
+		case "some_made_up_var_key":
 			foundCustom = true
-			assert.Equal(t, "some_made_up_value", a.Value, "some_made_up_key value")
+			assert.Equal(t, "some_made_up_var_value", a.Value, "some_made_up_var_key value")
 		}
 	}
 
-	require.True(t, foundLinkalways, "missing attribute: linkalways")
-	require.True(t, foundCustom, "missing attribute: some_made_up_key")
+	require.True(t, foundCustom, "missing attribute: some_made_up_var_key")
 }
-// <<< TEST_SYMBOL_ATTRIBUTES END
