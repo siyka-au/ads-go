@@ -18,31 +18,31 @@
     <LibraryReferences>{c34386ea-03e6-4409-9a3f-3bcbf5806004}</LibraryReferences>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Lib\AttributeTest.TcPOU">
+    <Compile Include="Lib\FB_AttributeTest.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\TypeTestStruct.TcDUT">
+    <Compile Include="Lib\ST_TypeTestStruct.TcDUT">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\PackNone.TcDUT">
+    <Compile Include="Lib\ST_PackNone.TcDUT">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\PackTwo.TcDUT">
+    <Compile Include="Lib\ST_PackTwo.TcDUT">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\PackFour.TcDUT">
+    <Compile Include="Lib\ST_PackFour.TcDUT">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\PackEight.TcDUT">
+    <Compile Include="Lib\ST_PackEight.TcDUT">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\StructTest.TcPOU">
+    <Compile Include="Lib\FB_StructTest.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\TypeTest.TcPOU">
+    <Compile Include="Lib\FB_TypeTest.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\WriteTest.TcPOU">
+    <Compile Include="Lib\FB_WriteTest.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Programs\Main.TcPOU">

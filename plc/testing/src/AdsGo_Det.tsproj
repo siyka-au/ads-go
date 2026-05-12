@@ -15,7 +15,7 @@
 		</System>
 		<Plc>
 			<Project GUID="{A4B7050C-70E7-4D50-A7FA-822A09BE6866}" Name="AdsGo_Det" PrjFilePath="AdsGo_Det.plcproj" TmcFilePath="AdsGo_Det.tmc" ReloadTmc="true" AmsPort="852" FileArchiveSettings="#x000e" SymbolicMapping="true">
-				<Instance Id="#x08502040" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="AdsGo_Det.tmc" TmcHash="{1D3D6C86-B4DA-0AC7-4A44-98E7350ABB78}">
+				<Instance Id="#x08502040" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="AdsGo_Det.tmc" TmcHash="{5CCDCA04-6578-D137-604E-F2B05557F19C}">
 					<Name>AdsGo_Det Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Contexts>

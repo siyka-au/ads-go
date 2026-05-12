@@ -3,25 +3,26 @@
   <POU Name="Main" Id="{151bda18-a213-42d0-86e0-e79837f085e9}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM Main
 VAR
-	type_test : TypeTest;
-	write_test : WriteTest;
+	fbTypeTest : FB_TypeTest;
+	fbWriteTest : FB_WriteTest;
 	// Struct packing test targets — one instance per pack_mode
 	// struct_tests: PLC drives these from seed (Go read-only for phase 1)
-	struct_test : StructTest;
+	fbStructTest : FB_StructTest;
 	
 	{attribute 'some_made_up_var_key':='some_made_up_var_value'}
-	attribute_test : AttributeTest;
-END_VAR]]></Declaration>
+	fbAttributeTest : FB_AttributeTest;
+END_VAR
+]]></Declaration>
     <Implementation>
-      <ST><![CDATA[type_test();
-write_test();
-struct_test();
-attribute_test();]]></ST>
+      <ST><![CDATA[fbTypeTest();
+fbWriteTest();
+fbStructTest();
+fbAttributeTest();
+]]></ST>
     </Implementation>
     <LineIds Name="Main">
-      <LineId Id="64" Count="1" />
-      <LineId Id="4" Count="0" />
-      <LineId Id="70" Count="0" />
+      <LineId Id="139" Count="3" />
+      <LineId Id="82" Count="0" />
     </LineIds>
   </POU>
 </TcPlcObject>
