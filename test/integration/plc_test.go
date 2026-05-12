@@ -5,24 +5,83 @@ package integration
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/jarmocluyse/ads-go/pkg/ads"
 	adssymbol "github.com/jarmocluyse/ads-go/pkg/ads/ads-symbol"
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 const plcPort = 852
 
+var (
+	loadIntegrationEnvOnce sync.Once
+	loadIntegrationEnvErr  error
+)
+
+func integrationEnvCandidates() []string {
+	seen := map[string]struct{}{}
+	candidates := make([]string, 0, 6)
+
+	add := func(path string) {
+		if path == "" {
+			return
+		}
+		cleanPath := filepath.Clean(path)
+		if _, exists := seen[cleanPath]; exists {
+			return
+		}
+		seen[cleanPath] = struct{}{}
+		candidates = append(candidates, cleanPath)
+	}
+
+	add(os.Getenv("ADS_TEST_ENV_FILE"))
+	add(".env.integration")
+	add(".env")
+
+	if _, currentFile, _, ok := runtime.Caller(0); ok {
+		integrationDir := filepath.Dir(currentFile)
+		repoRoot := filepath.Clean(filepath.Join(integrationDir, "..", ".."))
+
+		add(filepath.Join(integrationDir, ".env.integration"))
+		add(filepath.Join(integrationDir, ".env"))
+		add(filepath.Join(repoRoot, ".env.integration"))
+		add(filepath.Join(repoRoot, ".env"))
+	}
+
+	return candidates
+}
+
+func loadIntegrationEnv() {
+	loadIntegrationEnvOnce.Do(func() {
+		for _, candidate := range integrationEnvCandidates() {
+			info, err := os.Stat(candidate)
+			if err != nil || info.IsDir() {
+				continue
+			}
+			loadIntegrationEnvErr = godotenv.Load(candidate)
+			return
+		}
+	})
+}
+
 // newClient creates an ADS client from environment variables and registers cleanup.
 // ADS_TARGET_NET_ID is required. ADS_ROUTER_HOST defaults to 127.0.0.1.
+// The tests also try to load a .env.integration or .env file from the repo root
+// or the test/integration directory before checking the environment.
 func newClient(t *testing.T) *ads.Client {
 	t.Helper()
+	loadIntegrationEnv()
+	require.NoError(t, loadIntegrationEnvErr, "load integration env file")
 
 	targetNetID := os.Getenv("ADS_TARGET_NET_ID")
-	require.NotEmpty(t, targetNetID, "ADS_TARGET_NET_ID env var must be set (e.g. 192.168.1.5.1.1)")
+	require.NotEmpty(t, targetNetID, "ADS_TARGET_NET_ID env var must be set (e.g. 192.168.1.5.1.1), or provided via .env.integration/.env or ADS_TEST_ENV_FILE")
 
 	settings := ads.ClientSettings{
 		TargetNetID: targetNetID,
@@ -108,72 +167,75 @@ func assertSnapshot(t *testing.T, raw any, seed uint32) {
 
 	exp := expectedValues(seed)
 
-	assert.Equal(t, exp.Seed, m["seed"], "seed")
-	assert.Equal(t, exp.Bool, m["bool_var"], "bool_var")
-	assert.Equal(t, exp.Sint, m["sint_var"], "sint_var")
-	assert.Equal(t, exp.Usint, m["usint_var"], "usint_var")
-	assert.Equal(t, exp.Byte_, m["byte_var"], "byte_var")
-	assert.Equal(t, exp.Int, m["int_var"], "int_var")
-	assert.Equal(t, exp.Uint, m["uint_var"], "uint_var")
-	assert.Equal(t, exp.Word, m["word_var"], "word_var")
-	assert.Equal(t, exp.Dint, m["dint_var"], "dint_var")
-	assert.Equal(t, exp.Udint, m["udint_var"], "udint_var")
-	assert.Equal(t, exp.Dword, m["dword_var"], "dword_var")
-	assert.Equal(t, exp.Lint, m["lint_var"], "lint_var")
-	assert.Equal(t, exp.Ulint, m["ulint_var"], "ulint_var")
-	assert.Equal(t, exp.Lword, m["lword_var"], "lword_var")
+	assert.Equal(t, exp.Seed, m["nSeed"], "nSeed")
+	assert.Equal(t, exp.Bool, m["bBoolVar"], "bBoolVar")
+	assert.Equal(t, exp.Sint, m["nSintVar"], "nSintVar")
+	assert.Equal(t, exp.Usint, m["nUsintVar"], "nUsintVar")
+	assert.Equal(t, exp.Byte_, m["nByteVar"], "nByteVar")
+	assert.Equal(t, exp.Int, m["nIntVar"], "nIntVar")
+	assert.Equal(t, exp.Uint, m["nUintVar"], "nUintVar")
+	assert.Equal(t, exp.Word, m["nWordVar"], "nWordVar")
+	assert.Equal(t, exp.Dint, m["nDintVar"], "nDintVar")
+	assert.Equal(t, exp.Udint, m["nUdintVar"], "nUdintVar")
+	assert.Equal(t, exp.Dword, m["nDwordVar"], "nDwordVar")
+	assert.Equal(t, exp.Lint, m["nLintVar"], "nLintVar")
+	assert.Equal(t, exp.Ulint, m["nUlintVar"], "nUlintVar")
+	assert.Equal(t, exp.Lword, m["nLwordVar"], "nLwordVar")
 	// float32 is only exact for seeds ≤ 2^24-1 = 16_777_215
 	if seed <= 16_777_215 {
-		assert.Equal(t, exp.Real, m["real_var"], "real_var")
+		assert.Equal(t, exp.Real, m["fRealVar"], "fRealVar")
 	}
-	assert.Equal(t, exp.Lreal, m["lreal_var"], "lreal_var")
-	assert.Equal(t, exp.Time_, m["time_var"], "time_var")
-	assert.Equal(t, exp.Tod, m["tod_var"], "tod_var")
-	assert.Equal(t, exp.Date, m["date_var"], "date_var")
-	assert.Equal(t, exp.Dt, m["dt_var"], "dt_var")
-	// ltime_var / ltod_var / ldate_var / ldt_var not supported in TC 4024
-	assert.Equal(t, exp.String, m["string_var"], "string_var")
+	assert.Equal(t, exp.Lreal, m["fLrealVar"], "fLrealVar")
+	assert.Equal(t, exp.Time_, m["tTimeVar"], "tTimeVar")
+	assert.Equal(t, exp.Tod, m["tdTimeOfDayVar"], "tdTimeOfDayVar")
+	assert.Equal(t, exp.Date, m["dDateVar"], "dDateVar")
+	assert.Equal(t, exp.Dt, m["dtDateTimeVar"], "dtDateTimeVar")
+	// ltime_var / ltod_var / ldate_var / ldt_var not tested
+	assert.Equal(t, exp.String, m["sStringVar"], "sStringVar")
 }
 
 func assertIntArray(t *testing.T, raw any, seed uint32) {
 	t.Helper()
+	name := "aIntArray"
 	arr, ok := raw.([]any)
-	require.Truef(t, ok, "int_array: expected []any, got %T", raw)
-	require.Len(t, arr, 10, "int_array length")
+	require.Truef(t, ok, "%s: expected []any, got %T", name, raw)
+	require.Len(t, arr, 10, "%s length", name)
 	for i, v := range arr {
-		assert.Equal(t, int16(seed+uint32(i)), v, "int_array[%d]", i)
+		assert.Equal(t, int16(seed+uint32(i)), v, "%s	[%d]", name, i)
 	}
 }
 
 func assertDintArray(t *testing.T, raw any, seed uint32) {
 	t.Helper()
+	name := "aDintArray"
 	arr, ok := raw.([]any)
-	require.Truef(t, ok, "dint_array: expected []any, got %T", raw)
-	require.Len(t, arr, 10, "dint_array length")
+	require.Truef(t, ok, "%s: expected []any, got %T", name, raw)
+	require.Len(t, arr, 10, "%s length", name)
 	for i, v := range arr {
-		assert.Equal(t, int32(seed+uint32(i)), v, "dint_array[%d]", i)
+		assert.Equal(t, int32(seed+uint32(i)), v, "%s[%d]", name, i)
 	}
 }
 
 func assert2DArray(t *testing.T, raw any, seed uint32) {
 	t.Helper()
+	name := "aIntArray2d"
 	outer, ok := raw.([]any)
-	require.Truef(t, ok, "array_2d: expected []any, got %T", raw)
-	require.Len(t, outer, 3, "array_2d outer dimension")
+	require.Truef(t, ok, "%s: expected []any, got %T", name, raw)
+	require.Len(t, outer, 3, "%s outer dimension", name)
 	for i, row := range outer {
 		inner, ok := row.([]any)
-		require.Truef(t, ok, "array_2d[%d]: expected []any, got %T", i, row)
-		require.Len(t, inner, 3, "array_2d[%d] inner dimension", i)
+		require.Truef(t, ok, "%s[%d]: expected []any, got %T", name, i, row)
+		require.Len(t, inner, 3, "%s[%d] inner dimension", name, i)
 		for j, v := range inner {
-			assert.Equal(t, int16(seed+uint32(i)*3+uint32(j)), v, "array_2d[%d][%d]", i, j)
+			assert.Equal(t, int16(seed+uint32(i)*3+uint32(j)), v, "%s[%d][%d]", name, i, j)
 		}
 	}
 }
 
 // assertLinear reads every scalar field individually from basePath and checks
 // against the deterministic expectation for the given seed.
-// Works for flat FB vars (base = "Main.test") and struct linear access
-// (base = "Main.test.struct_var" or "Main.write_struct_var").
+// Works for flat FB vars (base = "Main.fbTypeTest") and struct linear access
+// (base = "Main.fbTypeTest.stStructVar" or "Main.fbWriteTest.stStructVar").
 func assertLinear(t *testing.T, client *ads.Client, base string, seed uint32) {
 	t.Helper()
 	exp := expectedValues(seed)
@@ -185,30 +247,33 @@ func assertLinear(t *testing.T, client *ads.Client, base string, seed uint32) {
 		return got
 	}
 
-	assert.Equal(t, exp.Seed, read("seed"), "seed")
-	assert.Equal(t, exp.Bool, read("bool_var"), "bool_var")
-	assert.Equal(t, exp.Sint, read("sint_var"), "sint_var")
-	assert.Equal(t, exp.Usint, read("usint_var"), "usint_var")
-	assert.Equal(t, exp.Byte_, read("byte_var"), "byte_var")
-	assert.Equal(t, exp.Int, read("int_var"), "int_var")
-	assert.Equal(t, exp.Uint, read("uint_var"), "uint_var")
-	assert.Equal(t, exp.Word, read("word_var"), "word_var")
-	assert.Equal(t, exp.Dint, read("dint_var"), "dint_var")
-	assert.Equal(t, exp.Udint, read("udint_var"), "udint_var")
-	assert.Equal(t, exp.Dword, read("dword_var"), "dword_var")
-	assert.Equal(t, exp.Lint, read("lint_var"), "lint_var")
-	assert.Equal(t, exp.Ulint, read("ulint_var"), "ulint_var")
-	assert.Equal(t, exp.Lword, read("lword_var"), "lword_var")
+	assert.Equal(t, exp.Seed, read("nSeed"), "nSeed")
+	assert.Equal(t, exp.Bool, read("bBoolVar"), "bBoolVar")
+	assert.Equal(t, exp.Sint, read("nSintVar"), "nSintVar")
+	assert.Equal(t, exp.Usint, read("nUsintVar"), "nUsintVar")
+	assert.Equal(t, exp.Byte_, read("nByteVar"), "nByteVar")
+	assert.Equal(t, exp.Int, read("nIntVar"), "nIntVar")
+	assert.Equal(t, exp.Uint, read("nUintVar"), "nUintVar")
+	assert.Equal(t, exp.Word, read("nWordVar"), "nWordVar")
+	assert.Equal(t, exp.Dint, read("nDintVar"), "nDintVar")
+	assert.Equal(t, exp.Udint, read("nUdintVar"), "nUdintVar")
+	assert.Equal(t, exp.Dword, read("nDwordVar"), "nDwordVar")
+	assert.Equal(t, exp.Lint, read("nLintVar"), "nLintVar")
+	assert.Equal(t, exp.Ulint, read("nUlintVar"), "nUlintVar")
+	assert.Equal(t, exp.Lword, read("nLwordVar"), "nLwordVar")
 	if seed <= 16_777_215 {
-		assert.Equal(t, exp.Real, read("real_var"), "real_var")
+		assert.Equal(t, exp.Real, read("fRealVar"), "fRealVar")
 	}
-	assert.Equal(t, exp.Lreal, read("lreal_var"), "lreal_var")
-	assert.Equal(t, exp.Time_, read("time_var"), "time_var")
-	assert.Equal(t, exp.Tod, read("tod_var"), "tod_var")
-	assert.Equal(t, exp.Date, read("date_var"), "date_var")
-	assert.Equal(t, exp.Dt, read("dt_var"), "dt_var")
-	// ltime_var / ltod_var / ldate_var / ldt_var not supported in TC 4024
-	assert.Equal(t, exp.String, read("string_var"), "string_var")
+	assert.Equal(t, exp.Lreal, read("fLrealVar"), "fLrealVar")
+	assert.Equal(t, exp.Time_, read("tTimeVar"), "tTimeVar")
+	assert.Equal(t, exp.Tod, read("tdTimeOfDayVar"), "tdTimeOfDayVar")
+	assert.Equal(t, exp.Date, read("dDateVar"), "dDateVar")
+	assert.Equal(t, exp.Dt, read("dtDateTimeVar"), "dtDateTimeVar")
+	// assert.Equal(t, exp.Time_, read("tLTimeVar"), "tLTimeVar")
+	// assert.Equal(t, exp.Tod, read("tdLTimeOfDayVar"), "tdLTimeOfDayVar")
+	// assert.Equal(t, exp.Date, read("dLDateVar"), "dLDateVar")
+	// assert.Equal(t, exp.Dt, read("dtLDateTimeVar"), "dtLDateTimeVar")
+	assert.Equal(t, exp.String, read("sStringVar"), "sStringVar")
 }
 
 // -----------------------------------------------------------------------
@@ -239,33 +304,35 @@ var staticSeedCases = []struct {
 func TestStaticSeed(t *testing.T) {
 	client := newClient(t)
 
+	const fb = "Main.fbTypeTest"
+
 	for _, tc := range staticSeedCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			// Write the driving seed over ADS
-			require.NoError(t, client.WriteValue(plcPort, "Main.test.seed", tc.seed), "WriteValue seed")
+			require.NoError(t, client.WriteValue(plcPort, fb+".nSeed", tc.seed), "WriteValue seed")
 
 			// Wait for at least 5 PLC cycles (50 ms @ 10 ms cycle)
 			time.Sleep(50 * time.Millisecond)
 
 			// --- struct_var (structural: whole struct in one read) ---
-			snapshotRaw, err := client.ReadValue(plcPort, "Main.test.struct_var")
-			require.NoError(t, err, "ReadValue Main.test.struct_var")
+			snapshotRaw, err := client.ReadValue(plcPort, fb+".stStructVar")
+			require.NoError(t, err, "ReadValue "+fb+".stStructVar")
 			assertSnapshot(t, snapshotRaw, tc.seed)
 
 			// --- 1-D int array ---
-			intArrRaw, err := client.ReadValue(plcPort, "Main.test.int_array")
-			require.NoError(t, err, "ReadValue Main.test.int_array")
+			intArrRaw, err := client.ReadValue(plcPort, fb+".aIntArray")
+			require.NoError(t, err, "ReadValue "+fb+".aIntArray")
 			assertIntArray(t, intArrRaw, tc.seed)
 
 			// --- 1-D dint array ---
-			dintArrRaw, err := client.ReadValue(plcPort, "Main.test.dint_array")
-			require.NoError(t, err, "ReadValue Main.test.dint_array")
+			dintArrRaw, err := client.ReadValue(plcPort, fb+".aDintArray")
+			require.NoError(t, err, "ReadValue "+fb+".aDintArray")
 			assertDintArray(t, dintArrRaw, tc.seed)
 
 			// --- 2-D int array ---
-			arr2DRaw, err := client.ReadValue(plcPort, "Main.test.array_2d")
-			require.NoError(t, err, "ReadValue Main.test.array_2d")
+			arr2DRaw, err := client.ReadValue(plcPort, fb+".aIntArray2d")
+			require.NoError(t, err, "ReadValue "+fb+".aIntArray2d")
 			assert2DArray(t, arr2DRaw, tc.seed)
 		})
 	}
@@ -273,30 +340,31 @@ func TestStaticSeed(t *testing.T) {
 
 // -----------------------------------------------------------------------
 // Read access-path coverage — verifies all three read patterns for one seed:
-//   1. Flat FB vars    — Main.test.<var>           (individual scalar reads)
-//   2. Struct structural — Main.test.struct_var    (whole struct in one call)
-//   3. Struct linear   — Main.test.struct_var.<var> (individual field reads)
+//   1. Flat FB vars    — Main.fbTypeTest.<var>           (individual scalar reads)
+//   2. Struct structural — Main.fbTypeTest.struct_var    (whole struct in one call)
+//   3. Struct linear   — Main.fbTypeTest.struct_var.<var> (individual field reads)
 // -----------------------------------------------------------------------
 
 func TestReadAllAccessPaths(t *testing.T) {
 	client := newClient(t)
 
+	const fb = "Main.fbTypeTest"
 	const seed = uint32(100)
-	require.NoError(t, client.WriteValue(plcPort, "Main.test.seed", seed), "write seed")
+	require.NoError(t, client.WriteValue(plcPort, fb+".nSeed", seed), "write seed")
 	time.Sleep(50 * time.Millisecond)
 
 	t.Run("flat_fb_vars", func(t *testing.T) {
-		assertLinear(t, client, "Main.test", seed)
+		assertLinear(t, client, "Main.fbTypeTest", seed)
 	})
 
 	t.Run("struct_structural", func(t *testing.T) {
-		raw, err := client.ReadValue(plcPort, "Main.test.struct_var")
-		require.NoError(t, err, "ReadValue Main.test.struct_var")
+		raw, err := client.ReadValue(plcPort, fb+".stStructVar")
+		require.NoError(t, err, "ReadValue "+fb+".stStructVar")
 		assertSnapshot(t, raw, seed)
 	})
 
 	t.Run("struct_linear", func(t *testing.T) {
-		assertLinear(t, client, "Main.test.struct_var", seed)
+		assertLinear(t, client, fb+".stStructVar", seed)
 	})
 }
 
@@ -306,16 +374,16 @@ func TestReadAllAccessPaths(t *testing.T) {
 
 func TestSubscription(t *testing.T) {
 	client := newClient(t)
-
+	const fb = "Main.fbTypeTest"
 	// Put PLC into a known state: seed=0
-	require.NoError(t, client.WriteValue(plcPort, "Main.test.seed", uint32(0)), "reset seed")
+	require.NoError(t, client.WriteValue(plcPort, fb+".nSeed", uint32(0)), "reset seed")
 	time.Sleep(50 * time.Millisecond)
 
 	// Subscribe to the snapshot struct (on-change, checked every PLC cycle)
 	notifCh := make(chan ads.SubscriptionData, 32)
 	sub, err := client.SubscribeValue(
 		plcPort,
-		"Main.test.struct_var",
+		fb+".stStructVar",
 		func(data ads.SubscriptionData) {
 			select {
 			case notifCh <- data:
@@ -327,7 +395,7 @@ func TestSubscription(t *testing.T) {
 			SendOnChange: true,
 		},
 	)
-	require.NoError(t, err, "SubscribeValue Main.test.struct_var")
+	require.NoError(t, err, "SubscribeValue "+fb+".stStructVar")
 	defer func() { _ = client.Unsubscribe(sub) }()
 
 	// Drain the mandatory initial notification sent on subscribe
@@ -343,7 +411,7 @@ func TestSubscription(t *testing.T) {
 
 	for i := 0; i < wantNotifs; i++ {
 		nextSeed := uint32(i + 1)
-		require.NoError(t, client.WriteValue(plcPort, "Main.test.seed", nextSeed), "write seed %d", nextSeed)
+		require.NoError(t, client.WriteValue(plcPort, fb+".nSeed", nextSeed), "write seed %d", nextSeed)
 
 		deadline := time.After(5 * time.Second)
 		for {
@@ -352,7 +420,7 @@ func TestSubscription(t *testing.T) {
 				m, ok := data.Value.(map[string]any)
 				require.Truef(t, ok, "notification %d: value should be map[string]any, got %T", i, data.Value)
 
-				gotSeed, ok := m["seed"].(uint32)
+				gotSeed, ok := m["nSeed"].(uint32)
 				require.Truef(t, ok, "notification %d: seed should be uint32", i)
 
 				if gotSeed < nextSeed {
@@ -373,11 +441,10 @@ func TestSubscription(t *testing.T) {
 
 // -----------------------------------------------------------------------
 // Write coverage — exercises WriteValue for every PLC type via:
-//   1. Flat MAIN-level vars  — Main.write_<type>_var  (atomic scalar writes)
-//   2. Struct linear fields  — Main.write_struct_var.<field>
-//   3. Struct structural     — Main.write_struct_var (whole struct at once) [SKIP: not yet implemented]
-//   4. FB control vars       — Main.test.seed / auto_mode / auto_tick_interval
-//   5. Arrays                — Main.write_int_array / write_dint_array / write_2d_array
+//   1. Flat MAIN-level vars  — Main.fbWriteTest.<type>Var  (atomic scalar writes)
+//   2. Struct linear fields  — Main.fbWriteTest.stStructVar.<field>
+//   3. Struct structural     — Main.fbWriteTest.stStructVar (whole struct at once) [SKIP: not yet implemented]
+//   4. Arrays                — Main.fbWriteTest.aIntArray / aDintArray / aIntArray2d
 // -----------------------------------------------------------------------
 
 type writeCase struct {
@@ -411,33 +478,38 @@ func runWriteCases(t *testing.T, client *ads.Client, cases []writeCase) {
 func TestWriteAllTypes(t *testing.T) {
 	client := newClient(t)
 
+	const fb = "Main.fbWriteTest"
+
 	// ------------------------------------------------------------------
 	// 1. Flat MAIN-level vars — PLC never touches these
 	// ------------------------------------------------------------------
 	t.Run("flat_main_vars", func(t *testing.T) {
-		const m = "Main"
 		runWriteCases(t, client, []writeCase{
-			{m + ".write_bool_var", true, eqCheck(true)},
-			{m + ".write_bool_var", false, eqCheck(false)},
-			{m + ".write_sint_var", int8(-99), eqCheck(int8(-99))},
-			{m + ".write_usint_var", uint8(200), eqCheck(uint8(200))},
-			{m + ".write_byte_var", uint8(0xFF), eqCheck(uint8(0xFF))},
-			{m + ".write_int_var", int16(-32000), eqCheck(int16(-32000))},
-			{m + ".write_uint_var", uint16(65000), eqCheck(uint16(65000))},
-			{m + ".write_word_var", uint16(0xABCD), eqCheck(uint16(0xABCD))},
-			{m + ".write_dint_var", int32(-2_000_000), eqCheck(int32(-2_000_000))},
-			{m + ".write_udint_var", uint32(3_000_000), eqCheck(uint32(3_000_000))},
-			{m + ".write_dword_var", uint32(0xDEADBEEF), eqCheck(uint32(0xDEADBEEF))},
-			{m + ".write_lint_var", int64(-9_000_000_000), eqCheck(int64(-9_000_000_000))},
-			{m + ".write_ulint_var", uint64(18_000_000_000), eqCheck(uint64(18_000_000_000))},
-			{m + ".write_lword_var", uint64(0xCAFEBABEDEADBEEF), eqCheck(uint64(0xCAFEBABEDEADBEEF))},
-			{m + ".write_real_var", float32(3.14), deltaCheck(float64(float32(3.14)), 1e-4)},
-			{m + ".write_lreal_var", float64(2.718281828), deltaCheck(2.718281828, 1e-9)},
-			{m + ".write_time_var", uint32(5000), eqCheck(uint32(5000))},
-			{m + ".write_tod_var", uint32(3_600_000), eqCheck(uint32(3_600_000))},
-			{m + ".write_date_var", uint32(1_000_000), eqCheck(uint32(1_000_000))},
-			{m + ".write_dt_var", uint32(1_700_000_000), eqCheck(uint32(1_700_000_000))},
-			{m + ".write_string_var", "hello ADS", eqCheck("hello ADS")},
+			{fb + ".bBoolVar", true, eqCheck(true)},
+			{fb + ".bBoolVar", false, eqCheck(false)},
+			{fb + ".nSintVar", int8(-99), eqCheck(int8(-99))},
+			{fb + ".nUsintVar", uint8(200), eqCheck(uint8(200))},
+			{fb + ".nByteVar", uint8(0xFF), eqCheck(uint8(0xFF))},
+			{fb + ".nIntVar", int16(-32000), eqCheck(int16(-32000))},
+			{fb + ".nUintVar", uint16(65000), eqCheck(uint16(65000))},
+			{fb + ".nWordVar", uint16(0xABCD), eqCheck(uint16(0xABCD))},
+			{fb + ".nDintVar", int32(-2_000_000), eqCheck(int32(-2_000_000))},
+			{fb + ".nUdintVar", uint32(3_000_000), eqCheck(uint32(3_000_000))},
+			{fb + ".nDwordVar", uint32(0xDEADBEEF), eqCheck(uint32(0xDEADBEEF))},
+			{fb + ".nLintVar", int64(-9_000_000_000), eqCheck(int64(-9_000_000_000))},
+			{fb + ".nUlintVar", uint64(18_000_000_000), eqCheck(uint64(18_000_000_000))},
+			{fb + ".nLwordVar", uint64(0xCAFEBABEDEADBEEF), eqCheck(uint64(0xCAFEBABEDEADBEEF))},
+			{fb + ".fRealVar", float32(3.14), deltaCheck(float64(float32(3.14)), 1e-4)},
+			{fb + ".fLrealVar", float64(2.718281828), deltaCheck(2.718281828, 1e-9)},
+			{fb + ".tTimeVar", uint32(5000), eqCheck(uint32(5000))},
+			{fb + ".tdTimeOfDayVar", uint32(3_600_000), eqCheck(uint32(3_600_000))},
+			{fb + ".dDateVar", uint32(1_000_000), eqCheck(uint32(1_000_000))},
+			{fb + ".dtDateTimeVar", uint32(1_700_000_000), eqCheck(uint32(1_700_000_000))},
+			// {fb + ".tLTimeVar", uint64(5000), eqCheck(uint64(5000))},
+			// {fb + ".tdLTimeOfDayVar", uint64(3_600_000), eqCheck(uint64(3_600_000))},
+			// {fb + ".dLDateVar", uint64(1_000_000), eqCheck(uint64(1_000_000))},
+			// {fb + ".dtLDateTimeVar", uint64(1_700_000_000), eqCheck(uint64(1_700_000_000))},
+			{fb + ".sStringVar", "hello ADS", eqCheck("hello ADS")},
 		})
 	})
 
@@ -445,30 +517,34 @@ func TestWriteAllTypes(t *testing.T) {
 	// 2. Struct fields — linear access, one field at a time
 	// ------------------------------------------------------------------
 	t.Run("struct_linear", func(t *testing.T) {
-		const s = "Main.write_struct_var"
+		const s = fb + ".stStructVar"
 		runWriteCases(t, client, []writeCase{
-			{s + ".seed", uint32(77), eqCheck(uint32(77))},
-			{s + ".bool_var", true, eqCheck(true)},
-			{s + ".bool_var", false, eqCheck(false)},
-			{s + ".sint_var", int8(-50), eqCheck(int8(-50))},
-			{s + ".usint_var", uint8(150), eqCheck(uint8(150))},
-			{s + ".byte_var", uint8(0xAB), eqCheck(uint8(0xAB))},
-			{s + ".int_var", int16(-1000), eqCheck(int16(-1000))},
-			{s + ".uint_var", uint16(1000), eqCheck(uint16(1000))},
-			{s + ".word_var", uint16(0x1234), eqCheck(uint16(0x1234))},
-			{s + ".dint_var", int32(-100_000), eqCheck(int32(-100_000))},
-			{s + ".udint_var", uint32(100_000), eqCheck(uint32(100_000))},
-			{s + ".dword_var", uint32(0x12345678), eqCheck(uint32(0x12345678))},
-			{s + ".lint_var", int64(-1_000_000_000), eqCheck(int64(-1_000_000_000))},
-			{s + ".ulint_var", uint64(1_000_000_000), eqCheck(uint64(1_000_000_000))},
-			{s + ".lword_var", uint64(0xDEADBEEF12345678), eqCheck(uint64(0xDEADBEEF12345678))},
-			{s + ".real_var", float32(1.5), deltaCheck(float64(float32(1.5)), 1e-4)},
-			{s + ".lreal_var", float64(3.141592653589793), deltaCheck(3.141592653589793, 1e-9)},
-			{s + ".time_var", uint32(2000), eqCheck(uint32(2000))},
-			{s + ".tod_var", uint32(7_200_000), eqCheck(uint32(7_200_000))},
-			{s + ".date_var", uint32(500_000), eqCheck(uint32(500_000))},
-			{s + ".dt_var", uint32(1_600_000_000), eqCheck(uint32(1_600_000_000))},
-			{s + ".string_var", "write test", eqCheck("write test")},
+			{s + ".nSeed", uint32(77), eqCheck(uint32(77))},
+			{s + ".bBoolVar", true, eqCheck(true)},
+			{s + ".bBoolVar", false, eqCheck(false)},
+			{s + ".nSintVar", int8(-50), eqCheck(int8(-50))},
+			{s + ".nUsintVar", uint8(150), eqCheck(uint8(150))},
+			{s + ".nByteVar", uint8(0xAB), eqCheck(uint8(0xAB))},
+			{s + ".nIntVar", int16(-1000), eqCheck(int16(-1000))},
+			{s + ".nUintVar", uint16(1000), eqCheck(uint16(1000))},
+			{s + ".nWordVar", uint16(0x1234), eqCheck(uint16(0x1234))},
+			{s + ".nDintVar", int32(-100_000), eqCheck(int32(-100_000))},
+			{s + ".nUdintVar", uint32(100_000), eqCheck(uint32(100_000))},
+			{s + ".nDwordVar", uint32(0x12345678), eqCheck(uint32(0x12345678))},
+			{s + ".nLintVar", int64(-1_000_000_000), eqCheck(int64(-1_000_000_000))},
+			{s + ".nUlintVar", uint64(1_000_000_000), eqCheck(uint64(1_000_000_000))},
+			{s + ".nLwordVar", uint64(0xDEADBEEF12345678), eqCheck(uint64(0xDEADBEEF12345678))},
+			{s + ".fRealVar", float32(1.5), deltaCheck(float64(float32(1.5)), 1e-4)},
+			{s + ".fLrealVar", float64(3.141592653589793), deltaCheck(3.141592653589793, 1e-9)},
+			{s + ".tTimeVar", uint32(2000), eqCheck(uint32(2000))},
+			{s + ".tdTimeOfDayVar", uint32(7_200_000), eqCheck(uint32(7_200_000))},
+			{s + ".dDateVar", uint32(500_000), eqCheck(uint32(500_000))},
+			{s + ".dtDateTimeVar", uint32(1_600_000_000), eqCheck(uint32(1_600_000_000))},
+			// {m + ".tLTimeVar", uint64(2000), eqCheck(uint64(2000))},
+			// {m + ".tdLTimeOfDayVar", uint64(7_200_000), eqCheck(uint64(7_200_000))},
+			// {m + ".dLDateVar", uint64(500_000), eqCheck(uint64(500_000))},
+			// {m + ".dtLDateTimeVar", uint64(1_600_000_000), eqCheck(uint64(1_600_000_000))},
+			{s + ".sStringVar", "write test", eqCheck("write test")},
 		})
 	})
 
@@ -478,33 +554,36 @@ func TestWriteAllTypes(t *testing.T) {
 	// ------------------------------------------------------------------
 	t.Run("struct_structural", func(t *testing.T) {
 		const seed = uint32(77)
+
 		exp := expectedValues(seed)
 		m := map[string]any{
-			"seed":       exp.Seed,
-			"bool_var":   exp.Bool,
-			"sint_var":   exp.Sint,
-			"usint_var":  exp.Usint,
-			"byte_var":   exp.Byte_,
-			"int_var":    exp.Int,
-			"uint_var":   exp.Uint,
-			"word_var":   exp.Word,
-			"dint_var":   exp.Dint,
-			"udint_var":  exp.Udint,
-			"dword_var":  exp.Dword,
-			"lint_var":   exp.Lint,
-			"ulint_var":  exp.Ulint,
-			"lword_var":  exp.Lword,
-			"real_var":   exp.Real,
-			"lreal_var":  exp.Lreal,
-			"time_var":   exp.Time_,
-			"tod_var":    exp.Tod,
-			"date_var":   exp.Date,
-			"dt_var":     exp.Dt,
-			"string_var": exp.String,
+			"nSeed":             exp.Seed,
+			"bAutoMode":         false,
+			"nAutoTickInterval": uint32(50),
+			"bBoolVar":          exp.Bool,
+			"nSintVar":          exp.Sint,
+			"nUsintVar":         exp.Usint,
+			"nByteVar":          exp.Byte_,
+			"nIntVar":           exp.Int,
+			"nUintVar":          exp.Uint,
+			"nWordVar":          exp.Word,
+			"nDintVar":          exp.Dint,
+			"nUdintVar":         exp.Udint,
+			"nDwordVar":         exp.Dword,
+			"nLintVar":          exp.Lint,
+			"nUlintVar":         exp.Ulint,
+			"nLwordVar":         exp.Lword,
+			"fRealVar":          exp.Real,
+			"fLrealVar":         exp.Lreal,
+			"tTimeVar":          exp.Time_,
+			"tdTimeOfDayVar":    exp.Tod,
+			"dDateVar":          exp.Date,
+			"dtDateTimeVar":     exp.Dt,
+			"sStringVar":        exp.String,
 		}
-		require.NoError(t, client.WriteValue(plcPort, "Main.write_struct_var", m))
+		require.NoError(t, client.WriteValue(plcPort, fb+".stStructVar", m))
 		time.Sleep(20 * time.Millisecond)
-		got, err := client.ReadValue(plcPort, "Main.write_struct_var")
+		got, err := client.ReadValue(plcPort, fb+".stStructVar")
 		require.NoError(t, err)
 		assertSnapshot(t, got, seed)
 	})
@@ -513,17 +592,17 @@ func TestWriteAllTypes(t *testing.T) {
 	// 4. FB control vars — public vars on the Deterministic FB instance
 	// ------------------------------------------------------------------
 	t.Run("fb_control_vars", func(t *testing.T) {
-		const fb = "Main.test"
+		const controlFB = "Main.fbTypeTest"
 		runWriteCases(t, client, []writeCase{
-			{fb + ".seed", uint32(999), eqCheck(uint32(999))},
-			{fb + ".auto_mode", true, eqCheck(true)},
-			{fb + ".auto_mode", false, eqCheck(false)},
-			{fb + ".auto_tick_interval", uint32(123), eqCheck(uint32(123))},
+			{controlFB + ".nSeed", uint32(999), eqCheck(uint32(999))},
+			{controlFB + ".bAutoMode", true, eqCheck(true)},
+			{controlFB + ".bAutoMode", false, eqCheck(false)},
+			{controlFB + ".nAutoTickInterval", uint32(123), eqCheck(uint32(123))},
 		})
 		// Restore stable state
-		require.NoError(t, client.WriteValue(plcPort, fb+".auto_mode", false), "restore auto_mode")
-		require.NoError(t, client.WriteValue(plcPort, fb+".seed", uint32(0)), "restore seed")
-		require.NoError(t, client.WriteValue(plcPort, fb+".auto_tick_interval", uint32(50)), "restore tick interval")
+		require.NoError(t, client.WriteValue(plcPort, controlFB+".bAutoMode", false), "restore auto_mode")
+		require.NoError(t, client.WriteValue(plcPort, controlFB+".nSeed", uint32(0)), "restore seed")
+		require.NoError(t, client.WriteValue(plcPort, controlFB+".nAutoTickInterval", uint32(50)), "restore tick interval")
 	})
 
 	// ------------------------------------------------------------------
@@ -534,15 +613,15 @@ func TestWriteAllTypes(t *testing.T) {
 		for i := range writeVal {
 			writeVal[i] = int16(i * 10)
 		}
-		require.NoError(t, client.WriteValue(plcPort, "Main.write_int_array", writeVal))
+		require.NoError(t, client.WriteValue(plcPort, fb+".aIntArray", writeVal))
 		time.Sleep(20 * time.Millisecond)
-		got, err := client.ReadValue(plcPort, "Main.write_int_array")
+		got, err := client.ReadValue(plcPort, fb+".aIntArray")
 		require.NoError(t, err)
 		arr, ok := got.([]any)
 		require.True(t, ok, "expected []any got %T", got)
 		require.Len(t, arr, 10)
 		for i, v := range arr {
-			assert.Equal(t, int16(i*10), v, "write_int_array[%d]", i)
+			assert.Equal(t, int16(i*10), v, "aIntArray[%d]", i)
 		}
 	})
 
@@ -551,15 +630,15 @@ func TestWriteAllTypes(t *testing.T) {
 		for i := range writeVal {
 			writeVal[i] = int32(i * 1000)
 		}
-		require.NoError(t, client.WriteValue(plcPort, "Main.write_dint_array", writeVal))
+		require.NoError(t, client.WriteValue(plcPort, fb+".aDintArray", writeVal))
 		time.Sleep(20 * time.Millisecond)
-		got, err := client.ReadValue(plcPort, "Main.write_dint_array")
+		got, err := client.ReadValue(plcPort, fb+".aDintArray")
 		require.NoError(t, err)
 		arr, ok := got.([]any)
 		require.True(t, ok, "expected []any got %T", got)
 		require.Len(t, arr, 10)
 		for i, v := range arr {
-			assert.Equal(t, int32(i*1000), v, "write_dint_array[%d]", i)
+			assert.Equal(t, int32(i*1000), v, "aDintArray[%d]", i)
 		}
 	})
 
@@ -569,9 +648,9 @@ func TestWriteAllTypes(t *testing.T) {
 			{4, 5, 6},
 			{7, 8, 9},
 		}
-		require.NoError(t, client.WriteValue(plcPort, "Main.write_2d_array", writeVal))
+		require.NoError(t, client.WriteValue(plcPort, fb+".aIntArray2d", writeVal))
 		time.Sleep(20 * time.Millisecond)
-		got, err := client.ReadValue(plcPort, "Main.write_2d_array")
+		got, err := client.ReadValue(plcPort, fb+".aIntArray2d")
 		require.NoError(t, err)
 		outer, ok := got.([]any)
 		require.True(t, ok, "expected []any got %T", got)
@@ -581,7 +660,7 @@ func TestWriteAllTypes(t *testing.T) {
 			require.True(t, ok)
 			require.Len(t, inner, 3)
 			for j, v := range inner {
-				assert.Equal(t, writeVal[i][j], v, "write_2d_array[%d][%d]", i, j)
+				assert.Equal(t, writeVal[i][j], v, "aIntArray2d[%d][%d]", i, j)
 			}
 		}
 	})
@@ -590,16 +669,16 @@ func TestWriteAllTypes(t *testing.T) {
 // -----------------------------------------------------------------------
 // Struct packing — the same four fields under pack_mode 0/2/4/8.
 //
-// Field layout:  b1 BOOL | d1 DWORD | b2 BOOL | lw1 LWORD
+// Field layout:  bBoolMember1 BOOL | nDwordMember DWORD | bBoolMember2 BOOL | nLwordMember LWORD
 // This layout causes the DWORD and LWORD to land at different byte offsets
 // under each pack mode, so the serializer must use subItem.Offset (as
 // reported by the PLC's ADS type info) rather than packing fields naively.
 //
 // Expected offsets per Beckhoff docs:
-//   pack_mode 0:  b1=0  d1=1  b2=5  lw1=6   (total 14)
-//   pack_mode 2:  b1=0  d1=2  b2=6  lw1=8   (total 16)
-//   pack_mode 4:  b1=0  d1=4  b2=8  lw1=12  (total 20)
-//   pack_mode 8:  b1=0  d1=4  b2=8  lw1=16  (total 24)
+//   pack_mode 0:  bBoolMember1=0  nDwordMember=1  bBoolMember2=5  nLwordMember=6   (total 14)
+//   pack_mode 2:  bBoolMember1=0  nDwordMember=2  bBoolMember2=6  nLwordMember=8   (total 16)
+//   pack_mode 4:  bBoolMember1=0  nDwordMember=4  bBoolMember2=8  nLwordMember=12  (total 20)
+//   pack_mode 8:  bBoolMember1=0  nDwordMember=4  bBoolMember2=8  nLwordMember=16  (total 24)
 //
 // Two-phase strategy to avoid circular validation:
 //
@@ -619,25 +698,31 @@ func packExpected(seed uint32) (b1 bool, d1 uint32, b2 bool, lw1 uint64) {
 	return seed%2 == 0, seed, seed%3 == 0, uint64(seed) * 3
 }
 
+var structTestFieldNames = struct{ b1, d1, b2, lw1 string }{
+	"bBoolMember1", "nDwordMember", "bBoolMember2", "nLwordMember",
+}
+
 func assertPackStruct(t *testing.T, got any, seed uint32) {
 	t.Helper()
 	m, ok := got.(map[string]any)
 	require.True(t, ok, "expected map[string]any got %T", got)
 	b1, d1, b2, lw1 := packExpected(seed)
-	assert.Equal(t, b1, m["b1"], "b1")
-	assert.Equal(t, d1, m["d1"], "d1")
-	assert.Equal(t, b2, m["b2"], "b2")
-	assert.Equal(t, lw1, m["lw1"], "lw1")
+	assert.Equal(t, b1, m[structTestFieldNames.b1], structTestFieldNames.b1)
+	assert.Equal(t, d1, m[structTestFieldNames.d1], structTestFieldNames.d1)
+	assert.Equal(t, b2, m[structTestFieldNames.b2], structTestFieldNames.b2)
+	assert.Equal(t, lw1, m[structTestFieldNames.lw1], structTestFieldNames.lw1)
 }
 
 func TestStructPacking(t *testing.T) {
 	client := newClient(t)
 
+	fbName := "Main.fbStructTest"
+
 	packPaths := []struct{ name, plcRead, writeTarget string }{
-		{"pack_none", "Main.struct_tests.pack_none", "Main.pack_none"},
-		{"pack_two", "Main.struct_tests.pack_two", "Main.pack_two"},
-		{"pack_four", "Main.struct_tests.pack_four", "Main.pack_four"},
-		{"pack_eight", "Main.struct_tests.pack_eight", "Main.pack_eight"},
+		{"pack_none", fbName + ".stPackNone", fbName + ".stPackNoneWrite"},
+		{"pack_two", fbName + ".stPackTwo", fbName + ".stPackTwoWrite"},
+		{"pack_four", fbName + ".stPackFour", fbName + ".stPackFourWrite"},
+		{"pack_eight", fbName + ".stPackEight", fbName + ".stPackEightWrite"},
 	}
 
 	// ------------------------------------------------------------------
@@ -649,7 +734,7 @@ func TestStructPacking(t *testing.T) {
 		for _, seed := range []uint32{0, 1, 2, 3, 6, 100, 0xFFFFFFFF} {
 			seed := seed
 			t.Run(fmt.Sprintf("seed_%d", seed), func(t *testing.T) {
-				require.NoError(t, client.WriteValue(plcPort, "Main.struct_tests.seed", seed))
+				require.NoError(t, client.WriteValue(plcPort, fbName+".nSeed", seed))
 				time.Sleep(20 * time.Millisecond)
 				for _, p := range packPaths {
 					p := p
@@ -670,7 +755,8 @@ func TestStructPacking(t *testing.T) {
 	t.Run("write_then_linear_read", func(t *testing.T) {
 		const seed = uint32(42)
 		b1, d1, b2, lw1 := packExpected(seed)
-		val := map[string]any{"b1": b1, "d1": d1, "b2": b2, "lw1": lw1}
+
+		val := map[string]any{structTestFieldNames.b1: b1, structTestFieldNames.d1: d1, structTestFieldNames.b2: b2, structTestFieldNames.lw1: lw1}
 
 		for _, p := range packPaths {
 			p := p
@@ -678,21 +764,21 @@ func TestStructPacking(t *testing.T) {
 				require.NoError(t, client.WriteValue(plcPort, p.writeTarget, val), "WriteValue %s", p.writeTarget)
 				time.Sleep(20 * time.Millisecond)
 
-				gotB1, err := client.ReadValue(plcPort, p.writeTarget+".b1")
+				gotB1, err := client.ReadValue(plcPort, p.writeTarget+"."+structTestFieldNames.b1)
 				require.NoError(t, err)
-				assert.Equal(t, b1, gotB1, "b1")
+				assert.Equal(t, b1, gotB1, structTestFieldNames.b1)
 
-				gotD1, err := client.ReadValue(plcPort, p.writeTarget+".d1")
+				gotD1, err := client.ReadValue(plcPort, p.writeTarget+"."+structTestFieldNames.d1)
 				require.NoError(t, err)
-				assert.Equal(t, d1, gotD1, "d1")
+				assert.Equal(t, d1, gotD1, structTestFieldNames.d1)
 
-				gotB2, err := client.ReadValue(plcPort, p.writeTarget+".b2")
+				gotB2, err := client.ReadValue(plcPort, p.writeTarget+"."+structTestFieldNames.b2)
 				require.NoError(t, err)
-				assert.Equal(t, b2, gotB2, "b2")
+				assert.Equal(t, b2, gotB2, structTestFieldNames.b2)
 
-				gotLw1, err := client.ReadValue(plcPort, p.writeTarget+".lw1")
+				gotLw1, err := client.ReadValue(plcPort, p.writeTarget+"."+structTestFieldNames.lw1)
 				require.NoError(t, err)
-				assert.Equal(t, lw1, gotLw1, "lw1")
+				assert.Equal(t, lw1, gotLw1, structTestFieldNames.lw1)
 			})
 		}
 	})
@@ -700,8 +786,8 @@ func TestStructPacking(t *testing.T) {
 func TestSymbolAttributes(t *testing.T) {
 	client := newClient(t)
 
-	sym, err := client.GetSymbol(plcPort, "Main.attribute_test")
-	require.NoError(t, err, "GetSymbol Main.attribute_test")
+	sym, err := client.GetSymbol(plcPort, "Main.fbAttributeTest")
+	require.NoError(t, err, "GetSymbol Main.fbAttributeTest")
 	require.NotNil(t, sym)
 
 	// Log diagnostic info to help debug attribute parsing in integration environment.
@@ -716,7 +802,7 @@ func TestSymbolAttributes(t *testing.T) {
 		} else {
 			var found *adssymbol.AdsSymbol
 			for i := range all {
-				if all[i].Name == "Main.attribute_test" {
+				if all[i].Name == "Main.fbAttributeTest" {
 					found = &all[i]
 					break
 				}
@@ -739,7 +825,7 @@ func TestSymbolAttributes(t *testing.T) {
 	}
 
 	// Expect one attribute: a flag-only attribute.
-	require.Len(t, sym.Attributes, 1, "expected 1 attribute on Main.attribute_test")
+	require.Len(t, sym.Attributes, 1, "expected 1 attribute on Main.fbAttributeTest")
 
 	var foundCustom bool
 	for _, a := range sym.Attributes {
