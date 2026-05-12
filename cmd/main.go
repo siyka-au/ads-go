@@ -11,6 +11,7 @@ import (
 	"github.com/jarmocluyse/ads-go/cmd/cli"
 	"github.com/jarmocluyse/ads-go/pkg/ads"
 	adsstateinfo "github.com/jarmocluyse/ads-go/pkg/ads/ads-stateinfo"
+	adsconstants "github.com/jarmocluyse/ads-go/pkg/ads/constants"
 	"github.com/lmittmann/tint"
 )
 
@@ -33,7 +34,7 @@ func main() {
 	defaultTargetNetID := envOrDefault("ADS_TARGET_NET_ID", "127.0.0.1.1.1")
 	defaultRouterHost := envOrDefault("ADS_ROUTER_HOST", "127.0.0.1")
 
-	defaultRouterPort := 48898
+	defaultRouterPort := adsconstants.ADSDefaultTCPPort
 	if v := os.Getenv("ADS_ROUTER_PORT"); v != "" {
 		if p, err := strconv.Atoi(v); err == nil {
 			defaultRouterPort = p

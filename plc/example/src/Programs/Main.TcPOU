@@ -4,54 +4,51 @@
     <Declaration><![CDATA[PROGRAM Main
 VAR
 	fbTimer : TON;
-    bTick   : BOOL;
-
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[
-// ------------------------------------------------------------
+      <ST><![CDATA[// ------------------------------------------------------------
 // A) Cycle-based behavior (each PLC scan)
 // ------------------------------------------------------------
 
-IF GLOBAL.gIntCounterActive THEN
-    GLOBAL.gMyIntCounter := GLOBAL.gMyIntCounter + 1;
+IF GVL_Global.bIntCounterActive THEN
+	GVL_Global.nMyIntCounter := GVL_Global.nMyIntCounter + 1;
 END_IF
 
-IF GLOBAL.gBoolToggleActive THEN
-    GLOBAL.gMyBoolToogle := NOT GLOBAL.gMyBoolToogle;
+IF GVL_Global.bBoolToggleActive THEN
+	GVL_Global.bMyBoolToogle := NOT GVL_Global.bMyBoolToogle;
 END_IF
 
 // ------------------------------------------------------------
-// B) Time-based behavior (every gCyclePeriod)
+// B) Time-based behavior (every tCyclePeriod)
 // This triggers a "tick" each time the TON elapses.
 // ------------------------------------------------------------
-fbTimer(IN := TRUE, PT := GLOBAL.gCyclePeriod);
+fbTimer(IN := TRUE, PT := GVL_Global.tCyclePeriod);
 
-// bTick is TRUE only when timer is done
-bTick := fbTimer.Q;
-
-IF bTick THEN
-    // Do the same actions, but only on the tick
-    IF GLOBAL.gTimedCounterActive THEN
-        GLOBAL.gTimedIntCounter := GLOBAL.gTimedIntCounter + 1;
-    END_IF
-
-    IF GLOBAL.gTimedToggleActive THEN
-        GLOBAL.gTimedBoolToogle := NOT GLOBAL.gTimedBoolToogle;
-    END_IF
-
-    // Retrigger timer (create a periodic pulse)
-    fbTimer(IN := FALSE);
-END_IF]]></ST>
+IF fbTimer.Q THEN
+	// Do the same actions, but only on the tick
+	IF GVL_Global.bTimedCounterActive THEN
+		GVL_Global.nTimedIntCounter := GVL_Global.nTimedIntCounter + 1;
+	END_IF
+	
+	IF GVL_Global.bTimedToggleActive THEN
+		GVL_Global.bTimedBoolToogle := NOT GVL_Global.bTimedBoolToogle;
+	END_IF
+	
+	// Retrigger timer (create a periodic pulse)
+	fbTimer(IN := FALSE);
+END_IF
+]]></ST>
     </Implementation>
     <LineIds Name="Main">
-      <LineId Id="10" Count="3" />
+      <LineId Id="11" Count="2" />
       <LineId Id="23" Count="0" />
       <LineId Id="14" Count="5" />
       <LineId Id="2" Count="0" />
-      <LineId Id="25" Count="21" />
+      <LineId Id="25" Count="5" />
+      <LineId Id="34" Count="12" />
       <LineId Id="24" Count="0" />
+      <LineId Id="65" Count="0" />
     </LineIds>
   </POU>
 </TcPlcObject>

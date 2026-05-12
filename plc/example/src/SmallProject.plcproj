@@ -20,10 +20,10 @@
     <CombineIds>true</CombineIds>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Types\DUTSample.TcDUT">
+    <Compile Include="Types\ST_Sample.TcDUT">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Globals\Global.TcGVL">
+    <Compile Include="Globals\GVL_Global.TcGVL">
       <SubType>Code</SubType>
       <LinkAlways>true</LinkAlways>
     </Compile>

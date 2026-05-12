@@ -308,7 +308,7 @@
 		</System>
 		<Plc>
 			<Project GUID="{84419B4D-A906-4A7E-B105-28B655A900F8}" Name="SmallProject" PrjFilePath="SmallProject.plcproj" TmcFilePath="SmallProject.tmc" ReloadTmc="true" AmsPort="852" FileArchiveSettings="#x000e" SymbolicMapping="true">
-				<Instance Id="#x08502040" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="SmallProject.tmc" TmcHash="{76C58427-A27F-FC33-BD2D-D2336D36EA0C}">
+				<Instance Id="#x08502040" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="SmallProject.tmc" TmcHash="{97C46BF0-81EE-11A3-663A-C142FBD3D2A1}">
 					<Name>SmallProject Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Contexts>
