@@ -428,6 +428,15 @@ func TestSubscription(t *testing.T) {
 					continue
 				}
 
+				// The PLC updates stStructVar.nSeed before the derived fields, so a
+				// transitional notification can contain the next seed while the rest
+				// of the struct still reflects the previous cycle. The string field is
+				// assigned last, so once it matches the target seed the snapshot is
+				// stable for full-struct assertions.
+				if gotString, ok := m["sStringVar"].(string); !ok || gotString != expectedValues(gotSeed).String {
+					continue
+				}
+
 				require.Equalf(t, nextSeed, gotSeed, "notification %d: unexpected seed", i)
 				assertSnapshot(t, data.Value, gotSeed)
 
