@@ -35,9 +35,11 @@ func (c *Client) GetSymbol(port uint16, path string) (*adssymbol.AdsSymbol, erro
 }
 
 // UploadInfo returns the number of symbols and the total byte size of the
-// symbol table blob, read from ADS index group 0xF00C (SymbolUploadInfo).
+// symbol table blob, read from ADS index group 0xF00F (SymbolUploadInfo2).
+// The response is 24 bytes: symCount(4), symSize(4), dataTypeCount(4),
+// dataTypeSize(4), extendedDataSize(4), padding(4).
 func (c *Client) UploadInfo(port uint16) (symCount uint32, symSize uint32, err error) {
-	data, err := c.ReadRaw(port, uint32(types.ADSReservedIndexGroupSymbolUploadInfo2), 0, 8)
+	data, err := c.ReadRaw(port, uint32(types.ADSReservedIndexGroupSymbolUploadInfo2), 0, 24)
 	if err != nil {
 		return 0, 0, fmt.Errorf("UploadInfo: %w", err)
 	}
