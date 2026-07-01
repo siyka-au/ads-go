@@ -56,6 +56,32 @@ func (c *Client) WriteRaw(port uint16, indexGroup uint32, indexOffset uint32, da
 	return nil
 }
 
+// ReadWriteRawBinary sends an ADS ReadWrite with exact binary write data (no
+// null terminator appended). Use this for binary-protocol index groups such as
+// the ADS logger consumer registration (IG 0x0000F090).
+func (c *Client) ReadWriteRawBinary(port uint16, indexGroup uint32, indexOffset uint32, readLength uint32, writeData []byte) ([]byte, error) {
+	c.logger.Debug("ReadWriteRawBinary: Reading and writing binary data", "indexGroup", indexGroup, "indexOffset", indexOffset, "readLength", readLength, "writeDataSize", len(writeData))
+
+	payload := adsrequests.BuildReadWriteRequest(indexGroup, indexOffset, readLength, writeData)
+
+	req := AdsCommandRequest{
+		Command:    types.ADSCommandReadWrite,
+		TargetPort: port,
+		Data:       payload,
+	}
+	response, err := c.send(req)
+	if err != nil {
+		return nil, fmt.Errorf("ReadWriteRawBinary: failed to send ADS command: %w", err)
+	}
+
+	data, err := adsheader.StripAdsHeader(response)
+	if err != nil {
+		c.logger.Error("ReadWriteRawBinary: ADS header error", "error", err)
+		return nil, err
+	}
+	return data, nil
+}
+
 // ReadWriteRaw reads and writes raw data to the ADS server.
 func (c *Client) ReadWriteRaw(port uint16, indexGroup uint32, indexOffset uint32, readLength uint32, writeData []byte) ([]byte, error) {
 	c.logger.Debug("ReadWriteRaw: Reading and writing raw data", "indexGroup", indexGroup, "indexOffset", indexOffset, "readLength", readLength, "writeDataSize", len(writeData))

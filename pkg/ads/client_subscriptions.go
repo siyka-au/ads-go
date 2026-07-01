@@ -71,8 +71,9 @@ func (c *Client) SubscribeRaw(port uint16, indexGroup, indexOffset, size uint32,
 func (c *Client) addSubscription(port uint16, indexGroup, indexOffset, size uint32, callback SubscriptionCallback, settings SubscriptionSettings, symbol *adssymbol.AdsSymbol, dataType *types.AdsDataType, isRaw bool) (*ActiveSubscription, error) {
 	c.logger.Debug("addSubscription: Creating subscription", "port", port, "indexGroup", indexGroup, "indexOffset", indexOffset)
 
-	// Apply defaults
-	if settings.CycleTime == 0 {
+	// Apply defaults — only impose a minimum cycle time for OnChange mode;
+	// Cyclic mode with CycleTime=0 means "use the device's native cycle" (immediate push).
+	if settings.CycleTime == 0 && settings.SendOnChange {
 		settings.CycleTime = 200 * time.Millisecond
 	}
 

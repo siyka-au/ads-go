@@ -147,6 +147,12 @@ func (c *Client) invokeHook(hookName string, fn func()) {
 	fn()
 }
 
+// LocalAmsAddr returns the AMS address assigned to this client by the router.
+// Only valid after a successful Connect call.
+func (c *Client) LocalAmsAddr() AmsAddress {
+	return c.localAmsAddr
+}
+
 // invokeConnectHook safely calls the OnConnect hook with panic recovery.
 // Returns an error if the hook fails or panics.
 func (c *Client) invokeConnectHook(addr AmsAddress) (hookErr error) {
