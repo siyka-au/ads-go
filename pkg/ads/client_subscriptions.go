@@ -32,14 +32,14 @@ func (c *Client) SubscribeValue(port uint16, path string, callback SubscriptionC
 	// Get symbol info (like ReadValue does)
 	symbol, err := c.GetSymbol(port, path)
 	if err != nil {
-		return nil, fmt.Errorf("SubscribeValue: failed to get symbol: %w", err)
+		return nil, fmt.Errorf("SubscribeValue(%q): failed to get symbol: %w", path, err)
 	}
 	c.logger.Debug("SubscribeValue: Symbol received", "symbol", symbol)
 
 	// Get data type (like ReadValue does)
 	dataType, err := c.GetDataType(symbol.Type, port)
 	if err != nil {
-		return nil, fmt.Errorf("SubscribeValue: failed to get data type: %w", err)
+		return nil, fmt.Errorf("SubscribeValue(%q): failed to get data type: %w", path, err)
 	}
 
 	// Subscribe using raw address with symbol and data type info

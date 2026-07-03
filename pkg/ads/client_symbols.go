@@ -21,13 +21,13 @@ func (c *Client) GetSymbol(port uint16, path string) (*adssymbol.AdsSymbol, erro
 		utils.EncodeStringToPlcStringBuffer(path),
 	)
 	if err != nil {
-		c.logger.Error("GetSymbol: Failed to send ADS command", "error", err)
-		return &adssymbol.AdsSymbol{}, fmt.Errorf("GetSymbol: failed to send ADS command: %w", err)
+		c.logger.Error("GetSymbol: Failed to send ADS command", "path", path, "error", err)
+		return &adssymbol.AdsSymbol{}, fmt.Errorf("GetSymbol(%q): failed to send ADS command: %w", path, err)
 	}
 	symbol, err := adssymbol.ParseSymbol(data)
 	if err != nil {
-		c.logger.Error("GetSymbol: Failed to parse symbol from response", "error", err)
-		return &adssymbol.AdsSymbol{}, fmt.Errorf("GetSymbol: failed to parse symbol from response: %w", err)
+		c.logger.Error("GetSymbol: Failed to parse symbol from response", "path", path, "error", err)
+		return &adssymbol.AdsSymbol{}, fmt.Errorf("GetSymbol(%q): failed to parse symbol from response: %w", path, err)
 	}
 
 	c.logger.Debug("GetSymbol: Symbol read and parsed", "path", path)
