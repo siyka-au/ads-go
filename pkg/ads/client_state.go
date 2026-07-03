@@ -258,7 +258,7 @@ func (c *Client) checkStateForOperation(operationName string) error {
 	c.stateMutex.RUnlock()
 
 	if state == nil {
-		c.logger.Debug(operationName + ": System state unknown, allowing operation")
+		c.logger.Debug("checkStateForOperation: System state unknown, allowing operation", "operation", operationName)
 		return nil // Allow operation - state might not be cached yet
 	}
 

@@ -19,7 +19,7 @@ func (c *Client) ReadValue(port uint16, path string) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ReadValue(%q): failed to get symbol: %w", path, err)
 	}
-	c.logger.Debug("symbol received", "symbol", symbol)
+	c.logger.Debug("ReadValue: Symbol received", "path", path, "symbol", symbol)
 
 	dataType, err := c.GetDataType(symbol.Type, port)
 	if err != nil {

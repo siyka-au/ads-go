@@ -139,7 +139,21 @@ func (c *Client) addSubscription(port uint16, indexGroup, indexOffset, size uint
 	// Parse notification handle (bytes 4-7)
 	notificationHandle := binary.LittleEndian.Uint32(responseData[4:8])
 
-	c.logger.Info("addSubscription: Subscription created", "handle", notificationHandle, "port", port)
+	symbolName := ""
+	if symbol != nil {
+		symbolName = symbol.Name
+	}
+	c.logger.Info("addSubscription: Subscription created",
+		"handle", notificationHandle,
+		"port", port,
+		"symbol", symbolName,
+		"indexGroup", indexGroup,
+		"indexOffset", indexOffset,
+		"size", size,
+		"cycleTime", settings.CycleTime,
+		"sendOnChange", settings.SendOnChange,
+		"isRaw", isRaw,
+	)
 
 	// Create ActiveSubscription
 	sub := &ActiveSubscription{
@@ -314,12 +328,12 @@ func filetimeToTime(filetime uint64) time.Time {
 // handleNotification processes received notification packets and routes them
 // to the appropriate subscription callbacks.
 func (c *Client) handleNotification(data []byte) {
-	c.logger.Debug("handleNotification: Processing notification packet", "dataLen", len(data))
+	c.logger.Debug("handleNotification: Processing notification packet", "length", len(data))
 
 	// Parse notification packet
 	stamps, err := parseNotification(data)
 	if err != nil {
-		c.logger.Error("handleNotification: Failed to parse notification", "error", err)
+		c.logger.Error("handleNotification: Failed to parse notification", "length", len(data), "error", err)
 		return
 	}
 
